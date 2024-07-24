@@ -9,14 +9,10 @@ NC='\033[0m' # No Color
 os=$(lsb_release -is)
 
 # Paket yöneticisi ve komutları ayarlama
-if [ "$os" = "Ubuntu" ]; then
+if [ "$os" = "Ubuntu" ] || [ "$os" = "Debian" ]; then
   package_manager="apt"
   update_command="apt update"
-  docker_install_command="curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - && sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\" && sudo apt update && sudo apt install -y docker-ce docker-ce-cli containerd.io"
-elif [ "$os" = "Debian" ]; then
-  package_manager="apt"
-  update_command="apt update"
-  docker_install_command="curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add - && sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable\" && sudo apt update && sudo apt install -y docker-ce docker-ce-cli containerd.io"
+  docker_install_command="curl -fsSL https://download.docker.com/linux/$os $(lsb_release -cs) stable | sudo tee /etc/apt/sources.list.d/docker.list && sudo apt update && sudo apt install -y docker-ce docker-ce-cli containerd.io"
 elif [ "$os" = "CentOS" ]; then
   package_manager="yum"
   update_command="yum update"
@@ -51,14 +47,13 @@ fi
 
 # Kubernetes depo ekleme
 echo -e "${GREEN}Adım 4: Kubernetes Depo Ekleme${NC}"
-sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+curl -sL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
 echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-$kubernetes_version main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
 sudo $package_manager update
 
-# Kubernetes bileşenlerini yükleme
+# Kubernetes bileşenlerinin yüklenmesi
 echo -e "${GREEN}Adım 5: Kubernetes Bileşenlerinin Yüklemesi${NC}"
 sudo $package_manager install -y kubelet kubeadm kubectl
-sudo $package_manager mark hold kubelet kubeadm kubectl
 
 # Kubernetes kümesini başlatma
 echo -e "${GREEN}Adım 6: Kubernetes Kümesinin Başlatılması${NC}"
