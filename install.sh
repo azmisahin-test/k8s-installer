@@ -62,7 +62,7 @@ sudo kubeadm init --pod-network-cidr=10.244.0.0/16
 # Kullanıcı konfigürasyonu
 echo -e "${GREEN}Adım 7: Kullanıcı Konfigürasyonu${NC}"
 mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo cp /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 # Pod networkü ekleme
