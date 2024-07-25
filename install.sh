@@ -28,6 +28,11 @@ pod_network=${2:-calico}
 # Proxy settings (default: none)
 proxy=${3:-}
 
+# Ensure curl is installed
+echo -e "${GREEN}Step 0: Ensuring curl is installed${NC}"
+sudo $update_command
+sudo $package_manager install -y curl
+
 # Update packages
 echo -e "${GREEN}Step 1: Updating Packages${NC}"
 sudo $update_command
@@ -36,6 +41,12 @@ sudo $package_manager upgrade -y
 # Install Docker
 echo -e "${GREEN}Step 2: Installing Docker${NC}"
 $docker_install_command
+sudo $update_command
+sudo $package_manager install -y docker-ce docker-ce-cli containerd.io
+
+# Start Docker
+sudo systemctl enable docker
+sudo systemctl start docker
 
 # Proxy settings
 if [ -n "$proxy" ]; then
@@ -47,8 +58,8 @@ fi
 
 # Add Kubernetes repository
 echo -e "${GREEN}Step 4: Adding Kubernetes Repository${NC}"
-curl -sL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-$kubernetes_version main" | sudo tee /etc/apt/sources.list.d/kubernetes.list > /dev/null
+curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/kubernetes-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list > /dev/null
 sudo $update_command
 
 # Install Kubernetes components
