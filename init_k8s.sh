@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# init_k8s.sh
 set -e
 
 # Gereksinimlerin kontrol edilmesi
@@ -8,8 +8,8 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
-if [ ! -f /etc/kubernetes/admin.conf ]; then
-  echo "Kubernetes admin.conf dosyası bulunamadı. Lütfen Kubernetes kurulumunu tamamladığınızdan emin olun."
+if [ "$(lsb_release -is)" != "Ubuntu" ]; then
+  echo "Bu script yalnızca Ubuntu sistemlerinde çalıştırılabilir."
   exit 1
 fi
 
