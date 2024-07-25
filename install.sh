@@ -1,78 +1,78 @@
 #!/bin/bash
-
-# Renkler için tanımlamalar
+# install.sh
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
-# İşletim sistemini tespit etme
+# Detect OS
 os=$(lsb_release -is)
 
-# Paket yöneticisi ve komutları ayarlama
+# Package manager and update commands
 if [ "$os" = "Ubuntu" ] || [ "$os" = "Debian" ]; then
   package_manager="apt"
-  update_command="apt update"
-  docker_install_command="curl -fsSL https://download.docker.com/linux/$os $(lsb_release -cs) stable | sudo tee /etc/apt/sources.list.d/docker.list && sudo apt update && sudo apt install -y docker-ce docker-ce-cli containerd.io"
+  update_command="sudo apt update"
+  docker_install_command="curl -fsSL https://download.docker.com/linux/$os/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && echo \"deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/$os $(lsb_release -cs) stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null"
 elif [ "$os" = "CentOS" ]; then
   package_manager="yum"
-  update_command="yum update"
-  docker_install_command="sudo yum install -y yum-utils && sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo && sudo yum install docker-ce docker-ce-cli containerd.io"
+  update_command="sudo yum update"
+  docker_install_command="sudo yum install -y yum-utils && sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo && sudo yum install -y docker-ce docker-ce-cli containerd.io"
 fi
 
-# Kubernetes sürümü (varsayılan: 1.24)
+# Kubernetes version (default: 1.24)
 kubernetes_version=${1:-1.24}
 
-# Pod networkü (varsayılan: calico)
+# Pod network (default: calico)
 pod_network=${2:-calico}
 
-# Proxy ayarları (varsayılan: yok)
+# Proxy settings (default: none)
 proxy=${3:-}
 
-# Gerekli paketleri güncelleme
-echo -e "${GREEN}Adım 1: Gerekli Paketlerin Güncellenmesi${NC}"
-sudo $package_manager update
+# Update packages
+echo -e "${GREEN}Step 1: Updating Packages${NC}"
+sudo $update_command
 sudo $package_manager upgrade -y
 
-# Docker kurulumu
-echo -e "${GREEN}Adım 2: Docker Kurulumu${NC}"
+# Install Docker
+echo -e "${GREEN}Step 2: Installing Docker${NC}"
 $docker_install_command
 
-# Proxy ayarları (varsa)
+# Proxy settings
 if [ -n "$proxy" ]; then
-  echo -e "${GREEN}Adım 3: Proxy Ayarları${NC}"
+  echo -e "${GREEN}Step 3: Setting Proxy${NC}"
   echo "export http_proxy=$proxy" >> ~/.bashrc
   echo "export https_proxy=$proxy" >> ~/.bashrc
   source ~/.bashrc
 fi
 
-# Kubernetes depo ekleme
-echo -e "${GREEN}Adım 4: Kubernetes Depo Ekleme${NC}"
+# Add Kubernetes repository
+echo -e "${GREEN}Step 4: Adding Kubernetes Repository${NC}"
 curl -sL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-$kubernetes_version main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-sudo $package_manager update
+echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-$kubernetes_version main" | sudo tee /etc/apt/sources.list.d/kubernetes.list > /dev/null
+sudo $update_command
 
-# Kubernetes bileşenlerinin yüklenmesi
-echo -e "${GREEN}Adım 5: Kubernetes Bileşenlerinin Yüklemesi${NC}"
+# Install Kubernetes components
+echo -e "${GREEN}Step 5: Installing Kubernetes Components${NC}"
 sudo $package_manager install -y kubelet kubeadm kubectl
 
-# Kubernetes kümesini başlatma
-echo -e "${GREEN}Adım 6: Kubernetes Kümesinin Başlatılması${NC}"
+# Initialize Kubernetes cluster
+echo -e "${GREEN}Step 6: Initializing Kubernetes Cluster${NC}"
 sudo kubeadm init --pod-network-cidr=10.244.0.0/16
 
-# Kullanıcı konfigürasyonu
-echo -e "${GREEN}Adım 7: Kullanıcı Konfigürasyonu${NC}"
+# User configuration
+echo -e "${GREEN}Step 7: Configuring User${NC}"
 mkdir -p $HOME/.kube
 sudo cp /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-# Pod networkü ekleme
-echo -e "${GREEN}Adım 8: Pod Networkü Ekleme${NC}"
+# Add Pod network
+echo -e "${GREEN}Step 8: Adding Pod Network${NC}"
 if [ "$pod_network" = "calico" ]; then
   kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 else
-  echo "Desteklenmeyen pod networkü: $pod_network"
+  echo "Unsupported pod network: $pod_network"
   exit 1
 fi
 
-echo -e "${GREEN}Kubernetes Kümesi Kurulumu Tamamlandı!${NC}"
-echo "Master düğümünün IP adresini kullanarak diğer düğümleri kümeye katın."
+echo -e "${GREEN}Kubernetes Cluster Installation Completed!${NC}"
+echo "Use the IP address of the master node to join other nodes."
