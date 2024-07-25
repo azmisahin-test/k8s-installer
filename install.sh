@@ -5,6 +5,11 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
+# Ensure curl is installed
+echo -e "${GREEN}Step 0: Ensuring curl is installed${NC}"
+sudo apt update
+sudo apt install -y curl
+
 # Detect OS
 os=$(lsb_release -is)
 
@@ -12,7 +17,7 @@ os=$(lsb_release -is)
 if [ "$os" = "Ubuntu" ] || [ "$os" = "Debian" ]; then
   package_manager="apt"
   update_command="sudo apt update"
-  docker_install_command="curl -fsSL https://download.docker.com/linux/$os/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && echo \"deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/$os $(lsb_release -cs) stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null"
+  docker_install_command="curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && echo \"deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null && sudo apt update && sudo apt install -y docker-ce docker-ce-cli containerd.io"
 elif [ "$os" = "CentOS" ]; then
   package_manager="yum"
   update_command="sudo yum update"
@@ -28,23 +33,14 @@ pod_network=${2:-calico}
 # Proxy settings (default: none)
 proxy=${3:-}
 
-# Ensure curl is installed
-echo -e "${GREEN}Step 0: Ensuring curl is installed${NC}"
-sudo $update_command
-sudo $package_manager install -y curl
-
 # Update packages
 echo -e "${GREEN}Step 1: Updating Packages${NC}"
-sudo $update_command
+$update_command
 sudo $package_manager upgrade -y
 
 # Install Docker
 echo -e "${GREEN}Step 2: Installing Docker${NC}"
 $docker_install_command
-sudo $update_command
-sudo $package_manager install -y docker-ce docker-ce-cli containerd.io
-
-# Start Docker
 sudo systemctl enable docker
 sudo systemctl start docker
 
@@ -58,13 +54,16 @@ fi
 
 # Add Kubernetes repository
 echo -e "${GREEN}Step 4: Adding Kubernetes Repository${NC}"
-curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/kubernetes-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list > /dev/null
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+sudo tee /etc/apt/sources.list.d/kubernetes.list <<EOF
+deb https://apt.kubernetes.io/ kubernetes-xenial main
+EOF
 sudo $update_command
 
 # Install Kubernetes components
 echo -e "${GREEN}Step 5: Installing Kubernetes Components${NC}"
 sudo $package_manager install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
 
 # Initialize Kubernetes cluster
 echo -e "${GREEN}Step 6: Initializing Kubernetes Cluster${NC}"
