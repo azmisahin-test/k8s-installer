@@ -17,6 +17,11 @@ fi
 apt-get update
 apt-get install -y apt-transport-https ca-certificates curl gpg
 
+# Eski Kubernetes APT deposunun kaldırılması
+if [ -f /etc/apt/sources.list.d/kubernetes.list ]; then
+  rm /etc/apt/sources.list.d/kubernetes.list
+fi
+
 # Kubernetes APT deposunun eklenmesi
 mkdir -p /etc/apt/keyrings
 curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
